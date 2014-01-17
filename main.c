@@ -23,7 +23,63 @@ struct operand {
 	};
 };
 
+/*
+	+--------+
+	|xxxxxxxx|    MSB is the leftmost bit as convention.
+	+--------+
+	 H      L (Order)
 
+	
+	+--------+
+	|vvvv0TTT|            Single-byte tagged value
+	+--------+
+
+	
+	+--------+--------+
+	|hhh10TTT|llllllll|   Double-byte tagged value
+	+--------+--------+
+
+
+	tag != TAG_i
+
+	+--------+--------+--------+--------+--------+--------+
+	|LLL?1TTT|mmmmmmmm|vvvvvvvv|vvvvvvvv|vvvvvvvv|vvvvvvvv|   TAG_o if the leftmost byte != 0
+	+--------+--------+--------+--------+--------+--------+
+	+--------+--------+--------+--------+--------+
+	|LLL?1TTT|vvvvvvvv|vvvvvvvv|vvvvvvvv|mvvvvvvv|
+	+--------+--------+--------+--------+--------+
+	+--------+--------+--------+--------+
+	|LLL?1TTT|vvvvvvvv|vvvvvvvv|mvvvvvvv|                     TAG_o if the most significant bit(MSB) != 0
+	+--------+--------+--------+--------+
+	+--------+--------+--------+
+	|LLL?1TTT|vvvvvvvv|mvvvvvvv|
+	+--------+--------+--------+
+	+--------+--------+
+	|LLL?1TTT|mvvvvvvv|
+	+--------+--------+
+
+	tag == TAG_i
+
+	+--------+--------+--------+--------+--------+
+	|LLL?1TTT|vvvvvvvv|vvvvvvvv|vvvvvvvv|vvvvvvvv|
+	+--------+--------+--------+--------+--------+
+	+--------+--------+--------+--------+
+	|LLL?1TTT|vvvvvvvv|vvvvvvvv|vvvvvvvv|
+	+--------+--------+--------+--------+
+	+--------+--------+--------+
+	|LLL?1TTT|vvvvvvvv|vvvvvvvv|
+	+--------+--------+--------+
+	+--------+--------+
+	|LLL?1TTT|vvvvvvvv|
+	+--------+--------+
+
+
+	+--------+--------+~~~           ~~~+--------+
+	|LLL?1TTT|vvvvvvvv|...           ...|vvvvvvvv|
+	+--------+--------+~~~           ~~~+--------+
+
+
+*/
 
 enum {
 	TAG_i,
@@ -125,7 +181,7 @@ static void *step_varlen(struct state *s)
 		len = len_word+9;	
 	}
 	s->varlen = len;
-	return step_varbits_tag_i;
+	return step_varbits_tag_i_select;
 }
 static void *step_varbits_tag_i_select(struct state *s)
 {
@@ -138,7 +194,6 @@ static void *step_varbits_tag_i_select(struct state *s)
 
 static void *step_varbits_tag_i(struct state *s)
 {
-	switch
 }
 static void *step_varbits_tag_others(struct state *s)
 {
@@ -191,3 +246,4 @@ int main(int argc, char **argv)
 {
 	return 0;
 }
+
