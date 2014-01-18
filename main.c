@@ -1,27 +1,9 @@
 #include <stdio.h>
 
-struct operand {
-	unsigned tag : 3;
-	union {
-		struct {
-			unsigned flags : 1;
-			unsigned value : 4;
-		};
-		struct {
-			unsigned flags : 2;
-			unsigned value_hi : 3;
+#define SIZE_OF_WORD sizeof(unsigned int)
 
-			unsigned value_lo : 8;
-		};
-		struct {
-			unsigned flags : 2;	
-			unsigned len_code : 3;  /* +2 if len_code < 7 */
-
-			unsigned value : 8; 	/* sub-tag must be TAG_u and count = value + 9 */
-						/* The value must be fitted into one machine word except for primary tag TAG_i. */
-		};
-	};
-};
+#define SMALL_BITS (28)
+#define IS_SMALL_INTEGER(n) (-0x8000000<=(n) && (n)<=0x07ffffff) 
 
 /*
 	+--------+
@@ -85,6 +67,7 @@ enum {
 	TAG_i,
 	TAG_o,
 	TAG_u,
+	TAG_q,
 };
 
 struct state;
@@ -114,11 +97,30 @@ static void *step_tag_select(struct state *s);
 static void *step_4bits(struct state *s);
 static void *step_11bits(struct state *s);
 static void *step_varlen(struct state *s);
+static void *step_varbits_tag_i_or_others(struct state *s);
+
 static void *step_varbits_tag_i(struct state *s);
+static void *step_varbits_tag_i_smallbum_tag_i(struct state *s);
+static void *step_varbits_tag_i_smallbum_tag_q(struct state *s);
+static void *step_varbits_tag_i_bignum_tag_q(struct state *s);
+
+
 static void *step_varbits_tag_others(struct state *s);
 static void *step_varbits_tag_others_word_A(struct state *s);
 static void *step_varbits_tag_others_word_B(struct state *s);
 static void *step_varbits_tag_others_word_C(struct state *s);
+
+int operand_decode(struct state *s, unsigned char *buf, unsigned int size);
+
+static unsigned int __get_len_word(struct state *s)
+{
+	operand_decode(s, s->buf, s->len);
+	if (s->type != TAG_u) {
+		s->error = 1;
+		return 0;
+	}
+	return s->value;	
+}
 
 static void *step_init(struct state *s)
 {
@@ -181,9 +183,9 @@ static void *step_varlen(struct state *s)
 		len = len_word+9;	
 	}
 	s->varlen = len;
-	return step_varbits_tag_i_select;
+	return step_varbits_tag_i_or_others;
 }
-static void *step_varbits_tag_i_select(struct state *s)
+static void *step_varbits_tag_i_or_others(struct state *s)
 {
 	step_t ret;
 	if (s->type == TAG_i)
@@ -194,13 +196,43 @@ static void *step_varbits_tag_i_select(struct state *s)
 
 static void *step_varbits_tag_i(struct state *s)
 {
+	unsigned int val = *(unsigned int *)&s->buf[0];
+
+	if (s->varlen <= SIZE_OF_WORD) {
+		if (IS_SMALL_INTEGER(val))
+			return step_varbits_tag_i_smallbum_tag_i;
+		else
+			return step_varbits_tag_i_smallbum_tag_q;
+	} else {
+		return step_varbits_tag_i_bignum_tag_q;
+	}
 }
+static void *step_varbits_tag_i_smallbum_tag_i(struct state *s)
+{
+	unsigned int i;
+	for (i = 0; i < s->varlen; i++)
+		s->value |= s->buf[i] << (8*i);
+	return 0;
+}
+static void *step_varbits_tag_i_smallbum_tag_q(struct state *s)
+{
+//	s->value = __literal_create(s);
+	s->type = TAG_q;
+	return 0;
+}
+static void *step_varbits_tag_i_bignum_tag_q(struct state *s)
+{
+//	s->value = __literal_create(s);
+	s->type = TAG_q;
+	return 0;
+}
+
 static void *step_varbits_tag_others(struct state *s)
 {
 	switch (s->varlen) {
-	case WORD_SIZE+1:
+	case SIZE_OF_WORD+1:
 		return step_varbits_tag_others_word_A;
-	case WORD_SIZE:
+	case SIZE_OF_WORD:
 		return step_varbits_tag_others_word_B;
 	default:
 		return step_varbits_tag_others_word_C;
@@ -238,7 +270,7 @@ int operand_decode(struct state *s, unsigned char *buf, unsigned int size)
 	s->error = 0;
 	step = (step_t)step_init;
 
-	while (step = step(s));
+	while ((step = step(s)));
 	
 	return step ? -1 : 0;
 };
