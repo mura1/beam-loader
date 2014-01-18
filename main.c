@@ -70,17 +70,8 @@ enum {
 	TAG_q,
 };
 
-struct state;
-struct device {
-	unsigned int (*step)(struct state *s);	
-};
-
-
-typedef void *(*step_t)(struct state *s);
 
 struct state {
-	step_t		step;
-
 	unsigned char 	*buf;
 	unsigned int 	len;
 
@@ -91,8 +82,10 @@ struct state {
 	unsigned int	error;
 };
 
+typedef void *(*step_t)(struct state *s);
 
-static void *step_init(struct state *s);
+
+static void *step_start(struct state *s);
 static void *step_tag_select(struct state *s);
 static void *step_4bits(struct state *s);
 static void *step_11bits(struct state *s);
@@ -100,8 +93,8 @@ static void *step_varlen(struct state *s);
 static void *step_varbits_tag_i_or_others(struct state *s);
 
 static void *step_varbits_tag_i(struct state *s);
-static void *step_varbits_tag_i_smallbum_tag_i(struct state *s);
-static void *step_varbits_tag_i_smallbum_tag_q(struct state *s);
+static void *step_varbits_tag_i_smallnum_tag_i(struct state *s);
+static void *step_varbits_tag_i_smallnum_tag_q(struct state *s);
 static void *step_varbits_tag_i_bignum_tag_q(struct state *s);
 
 
@@ -111,6 +104,19 @@ static void *step_varbits_tag_others_word_B(struct state *s);
 static void *step_varbits_tag_others_word_C(struct state *s);
 
 int operand_decode(struct state *s, unsigned char *buf, unsigned int size);
+
+static unsigned int __create_small_integer(unsigned char *buf, unsigned int len)
+{
+	unsigned int i, ret;
+	for (i = 0; i < len; i++)
+		ret |= buf[i] << (8*i);
+	return ret;
+}
+static unsigned int __get_literal_address(unsigned char *buf, unsigned int len)
+{
+	return 0;
+}
+
 
 static unsigned int __get_len_word(struct state *s)
 {
@@ -122,7 +128,7 @@ static unsigned int __get_len_word(struct state *s)
 	return s->value;	
 }
 
-static void *step_init(struct state *s)
+static void *step_start(struct state *s)
 {
 	return step_tag_select(s);
 }
@@ -133,7 +139,7 @@ static void *step_tag_select(struct state *s)
 
 	s->type = dat & 0x07;
 
-	if ((dat & 0x10) == 0) {
+	if ((dat & 0x08) == 0) {
 		return step_4bits(s);
 	} else if ((dat & 0x10) == 0) {
 		return step_11bits(s);
@@ -200,29 +206,28 @@ static void *step_varbits_tag_i(struct state *s)
 
 	if (s->varlen <= SIZE_OF_WORD) {
 		if (IS_SMALL_INTEGER(val))
-			return step_varbits_tag_i_smallbum_tag_i(s);
+			return step_varbits_tag_i_smallnum_tag_i(s);
 		else
-			return step_varbits_tag_i_smallbum_tag_q(s);
+			return step_varbits_tag_i_smallnum_tag_q(s);
 	} else {
 		return step_varbits_tag_i_bignum_tag_q(s);
 	}
 }
-static void *step_varbits_tag_i_smallbum_tag_i(struct state *s)
+static void *step_varbits_tag_i_smallnum_tag_i(struct state *s)
 {
-	unsigned int i;
-	for (i = 0; i < s->varlen; i++)
-		s->value |= s->buf[i] << (8*i);
+	s->value = __create_small_integer(s->buf, s->varlen);
+	s->type = TAG_i;
 	return 0;
 }
-static void *step_varbits_tag_i_smallbum_tag_q(struct state *s)
+static void *step_varbits_tag_i_smallnum_tag_q(struct state *s)
 {
-//	s->value = __literal_create(s);
+	s->value = __get_literal_address(s->buf, s->varlen);
 	s->type = TAG_q;
 	return 0;
 }
 static void *step_varbits_tag_i_bignum_tag_q(struct state *s)
 {
-//	s->value = __literal_create(s);
+	s->value = __get_literal_address(s->buf, s->varlen);
 	s->type = TAG_q;
 	return 0;
 }
@@ -268,9 +273,9 @@ int operand_decode(struct state *s, unsigned char *buf, unsigned int size)
 	s->buf = buf;
 	s->len = size;
 	s->error = 0;
-	step = (step_t)step_init;
-
-	while ((step = step(s)));
+	step_start(s);
+	s->buf += s->varlen;
+	s->len -= s->varlen;
 	
 	return step ? -1 : 0;
 };
