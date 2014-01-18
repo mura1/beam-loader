@@ -124,7 +124,7 @@ static unsigned int __get_len_word(struct state *s)
 
 static void *step_init(struct state *s)
 {
-	return step_tag_select;
+	return step_tag_select(s);
 }
 static void *step_tag_select(struct state *s)
 {
@@ -134,11 +134,11 @@ static void *step_tag_select(struct state *s)
 	s->type = dat & 0x07;
 
 	if ((dat & 0x10) == 0) {
-		return step_4bits;
+		return step_4bits(s);
 	} else if ((dat & 0x10) == 0) {
-		return step_11bits;
+		return step_11bits(s);
 	} else {
-		return step_varlen;
+		return step_varlen(s);
 	}
 }
 static void *step_4bits(struct state *s)
@@ -183,15 +183,15 @@ static void *step_varlen(struct state *s)
 		len = len_word+9;	
 	}
 	s->varlen = len;
-	return step_varbits_tag_i_or_others;
+	return step_varbits_tag_i_or_others(s);
 }
 static void *step_varbits_tag_i_or_others(struct state *s)
 {
 	step_t ret;
 	if (s->type == TAG_i)
-		return step_varbits_tag_i;	
+		return step_varbits_tag_i(s);
 	else
-		return step_varbits_tag_others;
+		return step_varbits_tag_others(s);
 }
 
 static void *step_varbits_tag_i(struct state *s)
@@ -200,11 +200,11 @@ static void *step_varbits_tag_i(struct state *s)
 
 	if (s->varlen <= SIZE_OF_WORD) {
 		if (IS_SMALL_INTEGER(val))
-			return step_varbits_tag_i_smallbum_tag_i;
+			return step_varbits_tag_i_smallbum_tag_i(s);
 		else
-			return step_varbits_tag_i_smallbum_tag_q;
+			return step_varbits_tag_i_smallbum_tag_q(s);
 	} else {
-		return step_varbits_tag_i_bignum_tag_q;
+		return step_varbits_tag_i_bignum_tag_q(s);
 	}
 }
 static void *step_varbits_tag_i_smallbum_tag_i(struct state *s)
@@ -231,11 +231,11 @@ static void *step_varbits_tag_others(struct state *s)
 {
 	switch (s->varlen) {
 	case SIZE_OF_WORD+1:
-		return step_varbits_tag_others_word_A;
+		return step_varbits_tag_others_word_A(s);
 	case SIZE_OF_WORD:
-		return step_varbits_tag_others_word_B;
+		return step_varbits_tag_others_word_B(s);
 	default:
-		return step_varbits_tag_others_word_C;
+		return step_varbits_tag_others_word_C(s);
 	}
 }
 
