@@ -29,7 +29,7 @@ $(OBJDIR)/%.o : %.c
 -include $(OBJLIST:.o=.d)
 
 clean:
-	rm -rf $(TARGET) $(TARGET) $(OBJDIR) *.core
+	rm -rf $(TARGET) $(TARGET) $(OBJDIR) *.core *.a
 
 .PHONY : all clean
 

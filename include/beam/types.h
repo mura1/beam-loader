@@ -5,6 +5,8 @@ typedef unsigned char	byte;
 
 typedef unsigned int	size_t;
 
+#define NULL 		((void *)0)
+
 struct slice {
 	void 	*addr;
 	size_t	len;
