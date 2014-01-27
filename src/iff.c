@@ -10,6 +10,7 @@
 #include <errno.h>
 
 #include <beam/types.h>
+#include <beam/errno.h>
 
 static void print_buf(unsigned char *buf, size_t size)
 {
@@ -22,14 +23,6 @@ static void print_buf(unsigned char *buf, size_t size)
 	printf("\r\n");
 }
 
-
-enum IFF_ERROR {
-	OK,
-	EIFF_INVALID_HEADER_MAGIC,
-	EIFF_INVALID_FORM_TYPE,
-	EIFF_FORM_LEN_TOO_SHORT,
-	EIFF_INVALID_CHUNK_MAGIC,
-};
 
 enum {
 	CHUNK_ATOM 	= 0,
@@ -107,16 +100,6 @@ static uint32_t uint32_from_be(byte *buf)
 {
 	return ((uint32_t)buf[0] << 24) | ((uint32_t)buf[1] << 16) | ((uint32_t)buf[2] << 8) | (uint32_t)buf[3];
 }
-
-
-
-
-
-
-
-
-
-
 
 
 static int get_chunk_id(byte *buf)
