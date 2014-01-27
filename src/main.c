@@ -23,6 +23,13 @@ static void print_buf(unsigned char *buf, size_t size)
 		printf("%02x", buf[i]);
 	printf("\r\n");
 }
+int dummy_handler(struct slice *buf, void *state)
+{
+	printf("[dummy handler] [%.4s]:", (byte *)buf->addr);
+	print_buf(buf->addr, buf->len);
+	return 0;
+}
+
 
 int get_file_buffer(struct slice *s, char *filename)
 {
@@ -60,13 +67,6 @@ int put_file_buf(struct slice *s)
 
 
 
-static int dummy_handler(struct slice *buf, void *state)
-{
-	printf("[dummy handler] [%.4s]:", (byte *)buf->addr);
-	print_buf(buf->addr, buf->len);
-	return 0;
-}
-
 static int atom_chunk_handler(struct slice *buf, void *state) __attribute__((__weakref__("dummy_handler")));
 static int code_chunk_handler(struct slice *buf, void *state) __attribute__((__weakref__("dummy_handler")));
 static int str_chunk_handler(struct slice *buf, void *state) __attribute__((__weakref__("dummy_handler")));
@@ -100,13 +100,43 @@ static slice_handler_t chunk_handler_list[CHUNKS_TOTAL] = {
 };
 
 
+
+
+static parse_argv_get_char(struct slice *to_head, struct slice *to_tail, struct slice *from, byte c)
+{
+	int yes = *(byte *)from->addr == c;
+
+	to_head->addr = from->addr;
+	to_tail->addr = yes ? from->addr + 1 : from->addr;
+	to_head->len = yes ? 1 : 0; 
+	to_tail->len = yes ? from->len-1 : from->len;
+	to_head->cap = to_tail->cap = from->cap;
+}
+
+static parse_argv_get_string(struct slice *to_head, struct slice *to_tail, struct slice *from, byte *s)
+{
+	int yes = (strncmp(from->addr, s, from->len) == 0);
+	
+}
+int parse_argv(struct slice *to_head, struct slice *to_tail, struct slice *from, byte *format)
+{
+
+	to_head->addr = from->addr;
+	to_head->len = from->len;
+	to_head->cap = from->cap;
+
+	do {
+	
+		
+	} while (to_head->len > 0);
+
+	
+}
+
+
 struct iff_device {
 	uint32_t data;
 };
-
-
-
-
 
 static struct iff_device iff_device;
 
