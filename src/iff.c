@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <beam/types.h>
+
 static void print_buf(unsigned char *buf, size_t size)
 {
 	int i;
@@ -20,18 +22,6 @@ static void print_buf(unsigned char *buf, size_t size)
 	printf("\r\n");
 }
 
-typedef unsigned int 	uint32_t;
-typedef unsigned short 	uint16_t;
-typedef unsigned char	uint8_t;
-typedef unsigned char	byte;
-
-struct slice {
-	void 	*addr;
-	size_t	len;
-	size_t	cap;
-};
-
-typedef int (*slice_handler_t)(struct slice *buf, void *state);
 
 enum IFF_ERROR {
 	OK,
@@ -63,20 +53,20 @@ enum {
 #define CHUNK_MAGIC_LENGTH 4
 
 static const byte CHUNK_MAGIC_TABLE[CHUNKS_TOTAL][CHUNK_MAGIC_LENGTH] = {
-	[CHUNK_ATOM] 	= 'A','t','o','m',
-	[CHUNK_CODE] 	= 'C','o','d','e',
-	[CHUNK_STR] 	= 'S','t','r','T',
-	[CHUNK_IMP] 	= 'I','m','p','T',
-	[CHUNK_EXP] 	= 'E','x','p','T',
+	[CHUNK_ATOM] 	= {'A','t','o','m'},
+	[CHUNK_CODE] 	= {'C','o','d','e'},
+	[CHUNK_STR] 	= {'S','t','r','T'},
+	[CHUNK_IMP] 	= {'I','m','p','T'},
+	[CHUNK_EXP] 	= {'E','x','p','T'},
 
-	[CHUNK_LAMBDA] 	= 'F','u','n','T',
-	[CHUNK_LITERAL]	= 'L','i','t','T',
-	[CHUNK_ATTRIBUTE] = 'A','t','t','r',
-	[CHUNK_COMPILE]	= 'C','I','n','f',
-	[CHUNK_LINE] 	= 'L','i','n','e',
-	[CHUNK_LocT] 	= 'L','o','c','T',
-	[CHUNK_Trac] 	= 'T','r','a','c',
-	[CHUNK_Abst] 	= 'A','b','s','t',
+	[CHUNK_LAMBDA] 	= {'F','u','n','T'},
+	[CHUNK_LITERAL]	= {'L','i','t','T'},
+	[CHUNK_ATTRIBUTE] = {'A','t','t','r'},
+	[CHUNK_COMPILE]	= {'C','I','n','f'},
+	[CHUNK_LINE] 	= {'L','i','n','e'},
+	[CHUNK_LocT] 	= {'L','o','c','T'},
+	[CHUNK_Trac] 	= {'T','r','a','c'},
+	[CHUNK_Abst] 	= {'A','b','s','t'},
 };
 
 
@@ -118,6 +108,17 @@ static uint32_t uint32_from_be(byte *buf)
 	return ((uint32_t)buf[0] << 24) | ((uint32_t)buf[1] << 16) | ((uint32_t)buf[2] << 8) | (uint32_t)buf[3];
 }
 
+
+
+
+
+
+
+
+
+
+
+
 static int get_chunk_id(byte *buf)
 {
 	int i;
@@ -139,7 +140,7 @@ static int get_next_chunks(struct slice *to_head, struct slice *to_tail, struct 
 	if ((ret = get_chunk_id(from->addr)) < 0)
 		goto err1;
 		
-	chunk_len_aligned = (uint32_from_be(((struct chunk_header *)from->addr)->length) + 0x3) + sizeof(struct chunk_header) & ~0x3;
+	chunk_len_aligned = ((uint32_from_be(((struct chunk_header *)from->addr)->length) + 0x3) + sizeof(struct chunk_header)) & ~0x3;
 
 	to_head->addr = from->addr;
 	to_head->len = chunk_len_aligned;
@@ -156,27 +157,10 @@ err0:	return -EIFF_FORM_LEN_TOO_SHORT;
 
 static int test_handler(struct slice *buf, void *state)
 {
-	printf("[test handler] [%.4s]:", buf->addr);
+	printf("[test handler] [%.4s]:", (byte *)buf->addr);
 	print_buf(buf->addr, buf->len);
 	return 0;
 }
-
-static int chunks_handler(struct slice *buf, slice_handler_t *func_list, void *state)
-{	
-	struct slice hd, tl;
-	int ret;
-
-	while (buf->len) {
-		if ((ret = get_next_chunks(&hd, &tl, buf)) < 0)
-			goto err0;
-
-		if ((ret = func_list[ret](&hd, state)) < 0)
-			goto err0;
-	}
-
-err0:	return ret;
-}
-
 
 static int get_iff_header(struct slice *head, struct slice *tail, struct slice *from)
 {
