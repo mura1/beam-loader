@@ -11,6 +11,7 @@
 
 #include <beam/types.h>
 #include <beam/errno.h>
+#include <beam/atom_table.h>
 
 static void print_buf(unsigned char *buf, size_t size)
 {

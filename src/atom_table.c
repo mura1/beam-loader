@@ -2,15 +2,7 @@
 
 #include <beam/types.h>
 #include <beam/errno.h>
-
-struct atom_key {
-	byte *name;
-	byte len;
-};
-
-struct atom_value {
-	int pos;
-};
+#include <beam/atom_table.h>
 
 struct atom {
 	struct atom_key key;
@@ -20,10 +12,6 @@ struct atom {
 struct atom_table {
 	struct slice slots;
 };
-
-
-
-
 
 
 int atom_table_insert(struct atom_table *tbl, struct atom_key *from_k, struct atom_value *from_v)
